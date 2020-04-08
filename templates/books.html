@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Книги</h1>
+    {% if current_user and current_user.id == 1 %}
+        <a href="/add_book" class="btn btn-outline-primary btn-sm">Добавить книгу</a>
+    {% endif %}
+    {% if message %}
+        <div class="alert alert-danger" role="alert">
+          Произошла ошибка. Книга не выдана.
+        </div>
+    {% endif %}
+
+    <table class="table table-striped mt-3">
+
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Название</th>
+                <th scope="col">Автор</th>
+                <th scope="col">Жарн</th>
+                <th scope="col">Год</th>
+                <th scope="col">Количество </th>
+                {% if current_user and current_user.is_authenticated %}
+                    {% if current_user.id == 1 %}
+                        <th scope="col"></th>
+                        <th scope="col"></th>
+                    {% endif %}
+                {% endif %} 
+                
+                {% if current_user and current_user.is_authenticated %}
+                    {% if current_user.id > 1 %}
+                        <th scope="col"></th>
+                    {% endif %}
+                {% endif %}
+                <th></th>
+
+
+            </tr>
+        </thead>
+        <tbody>
+            <form action="" method="POST">
+                <tr>
+                    <td>{{ form.hidden_tag() }}</td>
+                    <td>{{ form.title(class='form-control') }}</td>
+                    <td>{{ form.authors(class='form-control') }}</td>
+                    <td>{{ form.genre(class='form-control') }}</td>
+                    <td>{{ form.year(class='form-control') }}</td>
+                    <td></td>
+                    <td> {{ form.submit(type="submit", class="btn btn-primary") }} </td>
+                </tr>
+            </form>
+
+        {% for book in books %}
+            <tr>
+                <th scope="row">{{ book.id }}</th>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author }}</td>
+                <td>{{ book.genre.name }}</td>
+                <td>{{ book.year }}</td>
+                <td>{{ book.count }}</td>
+                {% if current_user and current_user.id == 1 %}
+                    <td>
+                        <a href="/edit_book/{{ book.id }}" class="btn btn-outline-primary btn-sm">Изменить</a>
+                    </td>
+                    <td>
+                        <a href="/delete_book/{{ book.id }}" class="btn btn-outline-danger btn-sm">Удалить</a>
+                    </td>
+                {% endif %}
+                {% if current_user and current_user.is_authenticated and current_user.id > 1 %}
+                    <td>
+                        <a href="/add_issue/{{ book.id }}" class="btn btn-outline-primary btn-sm">Получить</a>
+                    </td>
+                {% else %}
+                    <td></td>
+                {% endif %}
+
+            </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+{% endblock %}

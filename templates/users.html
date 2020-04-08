@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Читатели</h2>
+    <a href="/add_user" class="btn btn-outline-primary btn-sm">Добавить читателя</a>
+
+    <table class="table table-striped mt-3">
+        <thead class="thead-dark">
+            <tr>
+              <th scope="col">Id</th>
+              <th scope="col">Имя</th>
+              <th scope="col">email</th>
+                <th scope="col"></th>
+                <th scope="col"></th>
+
+            </tr>
+        </thead>
+      <tbody>
+        {% for user in users %}
+            <tr>
+              <th scope="row">{{ user.id }}</th>
+              <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
+            <td>
+                <a href="/edit_user/{{ user.id }}" class="btn btn-outline-primary btn-sm">Редактировать</a>
+            </td>
+            <td>
+                <a href="/delete_user/{{ user.id }}" class="btn btn-outline-danger btn-sm">Удалить</a>
+            </td>
+            </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+{% endblock %}

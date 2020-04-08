@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Книги</h1>
+    {% if current_user.id == 1 %}
+        <a href="/add_issue" class="btn btn-outline-primary btn-sm">Выдать книгу</a>
+    {% endif %} 
+
+
+    <form action="" method="POST">
+     {{ form.hidden_tag() }}
+    <div class="row">
+            <div class="col-2">
+                {{ form.show_returned(class='form-control') }} {{ form.show_returned.label }}
+            </div>
+            <div class="col-1">
+                {{ form.submit(type="submit", class="btn btn-primary") }}
+            </div>
+        </div>
+    </form>
+
+
+    <table class="table table-striped mt-3">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Id</th>
+                <th scope="col">Читатель</th>
+                <th scope="col">Название</th>
+                <th scope="col">Автор</th>
+                <th scope="col">Дата выдачи</th>
+                <th scope="col">Дача возврата</th>
+                {% if current_user.id == 1 %}
+                    <th scope="col"></th>
+                {% endif %} 
+
+            </tr>
+        </thead>
+      <tbody>
+        {% for iss in issue %}
+            <tr>
+                <th scope="row">{{ iss.id }}</th>
+                <td>{{ iss.user.name }}</td>
+                <td>{{ iss.book.title }}</td>
+                <td>{{ iss.book.author }}</td>
+                <td>{{ iss.date_start }}</td>
+                <td>
+                    {% if not iss.date_finish  %}
+                            -
+                    {% else %}
+                        {{ iss.date_finish }}
+                    {% endif %}
+                </td>
+                {% if current_user.id == 1 %}
+                    <td>
+                        {% if not iss.date_finish  %}
+                            <a href="/return_issue/{{ iss.id }}" class="btn btn-outline-primary btn-sm">Вернуть</a>
+                        {% endif %}
+                    </td>
+                {% endif %}
+
+
+            </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+{% endblock %}
