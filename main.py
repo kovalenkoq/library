@@ -16,6 +16,9 @@ from resources import book_resources
 from resources import issue_resources
 from requests import get, post, put, delete
 
+URL = 'http://ya-lyceum-library.herokuapp.com'
+port = int(os.environ.get("PORT", 5000))
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
@@ -41,7 +44,7 @@ def load_user(user_id):
 @app.route("/return_issue/<int:issue_id>", methods=['GET'])
 @login_required
 def return_issue(issue_id):
-    users = put(f'http://127.0.0.1:5000/api/issue/{issue_id}').json()
+    users = put(f'{URL}:{port}/api/issue/{issue_id}').json()
     return redirect('/issue')
 
 
@@ -50,7 +53,7 @@ def return_issue(issue_id):
 def set_issue(book_id):
 
     data = {'user_id': current_user.id, 'book_id': book_id}
-    res = post('http://127.0.0.1:5000/api/issue', json=data)
+    res = post(f'{URL}:{port}/api/issue', json=data)
 
     if res:
         return redirect('/books')
@@ -62,8 +65,8 @@ def set_issue(book_id):
 @login_required
 def add_issue():
     form = AddIssueForm()
-    users = get('http://127.0.0.1:5000/api/users').json()['users']
-    books = get('http://127.0.0.1:5000/api/books').json()['books']
+    users = get(f'{URL}:{port}/api/users').json()['users']
+    books = get(f'{URL}:{port}/api/books').json()['books']
 
     users = sorted([(user['id'], user['name']) for user in users], key=lambda x: x[1])
     books = sorted([(book['id'], f"{book['title']} | {book['author']} | {book['count']}") for book in books], key=lambda x: x[1])
@@ -73,7 +76,7 @@ def add_issue():
 
     if form.validate_on_submit():
         data = {'user_id': form.users.data, 'book_id': form.books.data}
-        res = post('http://127.0.0.1:5000/api/issue', json=data)
+        res = post(f'{URL}:{port}/api/issue', json=data)
         if res:
             return redirect('/issue')
 
@@ -114,7 +117,7 @@ def issue():
 @login_required
 def delete_book(book_id):
     if request.method == 'GET':
-        res = delete(f'http://127.0.0.1:5000/api/books/{book_id}')
+        res = delete(f'{URL}:{port}/api/books/{book_id}')
         return redirect('/books')
 
 
@@ -123,7 +126,7 @@ def delete_book(book_id):
 def edit_book(book_id):
     form = AddBookForm()
     if request.method == 'GET':
-        book = get(f'http://127.0.0.1:5000/api/books/{book_id}').json()['book']
+        book = get(f'{URL}:{port}/api/books/{book_id}').json()['book']
         print(book)
         form.title.data = book['title']
         form.author.data = book['author']
@@ -147,7 +150,7 @@ def edit_book(book_id):
         }
         data['genre_id'] = genre.id
 
-        if put(f'http://127.0.0.1:5000/api/books/{book_id}', json=data):
+        if put(f'{URL}:{port}/api/books/{book_id}', json=data):
             return redirect('/books')
         else:
             return render_template("add_book.html", title='Добавить читателя', form=form,
@@ -175,7 +178,7 @@ def add_book():
         }
         data['genre_id'] = genre.id
 
-        if post('http://127.0.0.1:5000/api/books', json=data):
+        if post(f'{URL}:{port}/api/books', json=data):
             return redirect('/books')
         else:
             return render_template("add_book.html", title='Добавить читателя', form=form, message='Error')
@@ -187,7 +190,7 @@ def add_book():
 @login_required
 def delete_user(user_id):
     if request.method == 'GET':
-        res = delete(f'http://127.0.0.1:5000/api/users/{user_id}')
+        res = delete(f'{URL}:{port}/api/users/{user_id}')
         return redirect('/users')
 
 
@@ -196,7 +199,7 @@ def delete_user(user_id):
 def edit_user(user_id):
     form = AddUserForm()
     if request.method == 'GET':
-        user = get(f'http://127.0.0.1:5000/api/users/{user_id}').json()['user']
+        user = get(f'{URL}:{port}/api/users/{user_id}').json()['user']
         form.name.data = user['name']
         form.email.data = user['email']
         form.hashed_password.data = ''
@@ -207,7 +210,7 @@ def edit_user(user_id):
             'email': form.email.data,
             'hashed_password': form.hashed_password.data
         }
-        if put(f'http://127.0.0.1:5000/api/users/{user_id}', json=data):
+        if put(f'{URL}:{port}/api/users/{user_id}', json=data):
             return redirect('/users')
         else:
             return render_template("add_user.html", title='Добавить читателя', form=form,
@@ -239,7 +242,7 @@ def add_user():
             'email': form.email.data,
             'hashed_password': form.hashed_password.data
         }
-        if post('http://127.0.0.1:5000/api/users', json=data):
+        if post(f'{URL}:{port}/api/users', json=data):
             return redirect('/login')
         else:
             return render_template("add_user.html", title='Добавить читателя', form=form, message='Error')
@@ -250,7 +253,7 @@ def add_user():
 @app.route("/users")
 @login_required
 def users():
-    users = get('http://127.0.0.1:5000/api/users').json()
+    users = get(f'{URL}:{port}/api/users').json()
     return render_template("users.html", title='Читатели', users=users['users'])
 
 
@@ -303,7 +306,6 @@ def index():
 
 def main():
     db_session.global_init("db/blogs.sqlite")
-    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
 
