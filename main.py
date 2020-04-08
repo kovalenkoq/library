@@ -1,4 +1,5 @@
 import datetime
+import os
 
 from flask import Flask, render_template, request, redirect
 from flask_restful import reqparse, abort, Api, Resource
@@ -302,7 +303,9 @@ def index():
 
 def main():
     db_session.global_init("db/blogs.sqlite")
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+
 
 
 @app.route('/logout')
