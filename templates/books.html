@@ -21,6 +21,7 @@
                 <th scope="col">Жарн</th>
                 <th scope="col">Год</th>
                 <th scope="col">Количество </th>
+
                 {% if current_user and current_user.is_authenticated %}
                     {% if current_user.id == 1 %}
                         <th scope="col"></th>
@@ -29,11 +30,10 @@
                 {% endif %} 
                 
                 {% if current_user and current_user.is_authenticated %}
-                    {% if current_user.id > 1 %}
+                    {% if current_user.id > 0 %}
                         <th scope="col"></th>
                     {% endif %}
                 {% endif %}
-                <th></th>
 
 
             </tr>
@@ -46,8 +46,20 @@
                     <td>{{ form.authors(class='form-control') }}</td>
                     <td>{{ form.genre(class='form-control') }}</td>
                     <td>{{ form.year(class='form-control') }}</td>
-                    <td></td>
-                    <td> {{ form.submit(type="submit", class="btn btn-primary") }} </td>
+                    <td>{{ form.submit(type="submit", class="btn btn-primary") }}</td>
+
+                    {% if current_user and current_user.is_authenticated %}
+                        {% if current_user.id == 1 %}
+                            <td></td>
+                            <td></td>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if current_user and current_user.is_authenticated %}
+                        {% if current_user.id > 0 %}
+                            <td></td>
+                        {% endif %}
+                    {% endif %}
                 </tr>
             </form>
 
@@ -67,12 +79,11 @@
                         <a href="/delete_book/{{ book.id }}" class="btn btn-outline-danger btn-sm">Удалить</a>
                     </td>
                 {% endif %}
-                {% if current_user and current_user.is_authenticated and current_user.id > 1 %}
+                {% if current_user and current_user.is_authenticated and current_user.id > 0 %}
                     <td>
                         <a href="/add_issue/{{ book.id }}" class="btn btn-outline-primary btn-sm">Получить</a>
                     </td>
-                {% else %}
-                    <td></td>
+
                 {% endif %}
 
             </tr>
