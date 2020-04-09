@@ -44,18 +44,28 @@ def load_user(user_id):
 @app.route("/return_issue/<int:issue_id>", methods=['GET'])
 @login_required
 def return_issue(issue_id):
-    users = put(f'{URL}:{port}/api/issue/{issue_id}').json()
+    session = db_session.create_session()
+    issue = session.query(Issue).get(issue_id)
+
+    issue.date_finish = datetime.datetime.now()
+    issue.book.inc_book()
+
+    session.commit()
     return redirect('/issue')
 
 
 @app.route("/add_issue/<int:book_id>", methods=['GET', 'POST'])
 @login_required
 def set_issue(book_id):
+    session = db_session.create_session()
 
-    data = {'user_id': current_user.id, 'book_id': book_id}
-    res = post(f'{URL}:{port}/api/issue', json=data)
-
-    if res:
+    book = session.query(Books).get(book_id)
+    if book.dec_book():
+        issue = Issue(
+            user_id=current_user.id,
+            book_id=book_id)
+        session.add(issue)
+        session.commit()
         return redirect('/books')
 
     return render_template("books.html", title='Книги', message='Произошла ошибка. Книга не выдана')
@@ -64,21 +74,30 @@ def set_issue(book_id):
 @app.route("/add_issue", methods=['GET', 'POST'])
 @login_required
 def add_issue():
+    session = db_session.create_session()
     form = AddIssueForm()
-    users = get(f'{URL}:{port}/api/users').json()['users']
-    books = get(f'{URL}:{port}/api/books').json()['books']
 
-    users = sorted([(user['id'], user['name']) for user in users], key=lambda x: x[1])
-    books = sorted([(book['id'], f"{book['title']} | {book['author']} | {book['count']}") for book in books], key=lambda x: x[1])
+    users = session.query(Users).all()
+    books = session.query(Books).all()
+
+    users = sorted([(user.id, user.name) for user in users], key=lambda x: x[1])
+    books = sorted([(book.id, f"{book.title} | {book.author} | {book.count}") for book in books], key=lambda x: x[1])
 
     form.users.choices = users
     form.books.choices = books
 
     if form.validate_on_submit():
-        data = {'user_id': form.users.data, 'book_id': form.books.data}
-        res = post(f'{URL}:{port}/api/issue', json=data)
-        if res:
+
+        book = session.query(Books).get(form.books.data)
+        if book.dec_book():
+            issue = Issue(
+                user_id=form.users.data,
+                book_id=form.books.data)
+            session.add(issue)
+            session.commit()
             return redirect('/issue')
+        else:
+            return render_template("add_issue.html", title='Добавить книгу', form=form, message='Not enough books')
 
     return render_template("add_issue.html", title='Добавить книгу', form=form)
 
@@ -97,17 +116,8 @@ def issue():
     else:
         data = session.query(Issue).filter(Issue.user_id == current_user.id).all()
 
-    # for d in data:
-    #     if not d.date_finish:
-    #         d.date_finish = datetime.datetime.time()
-    #     print(d.date_finish)
-
     if hide_returned:
         data = list(filter(lambda x: not x.date_finish, data))
-
-    # for i in range(len(data)):
-    #     if not data[i].date_finish:
-    #         data[i].date_finish = '-'
 
     data = sorted(data, key=lambda x: str(x.date_finish) if not x.date_finish else '', reverse=True)
     return render_template("issue.html", title='Выдача', issue=data, form=form)
@@ -117,7 +127,10 @@ def issue():
 @login_required
 def delete_book(book_id):
     if request.method == 'GET':
-        res = delete(f'{URL}:{port}/api/books/{book_id}')
+        session = db_session.create_session()
+        book = session.query(Books).get(book_id)
+        session.delete(book)
+        session.commit()
         return redirect('/books')
 
 
@@ -125,14 +138,15 @@ def delete_book(book_id):
 @login_required
 def edit_book(book_id):
     form = AddBookForm()
+    session = db_session.create_session()
     if request.method == 'GET':
-        book = get(f'{URL}:{port}/api/books/{book_id}').json()['book']
-        print(book)
-        form.title.data = book['title']
-        form.author.data = book['author']
-        form.year.data = book['year']
-        form.count.data = book['count']
-        form.genre.data = book['genre']['name']
+
+        book = session.query(Books).get(book_id)
+        form.title.data = book.title
+        form.author.data = book.author
+        form.year.data = book.year
+        form.count.data = book.count
+        form.genre.data = book.genre.name
         return render_template("add_user.html", title='Изменить книгу', form=form)
 
     if form.validate_on_submit():
@@ -142,19 +156,16 @@ def edit_book(book_id):
             session.add(Genres(name=form.genre.data))
             genre = session.query(Genres).filter(Genres.name == form.genre.data).first()
         session.commit()
-        data = {
-            'title': form.title.data,
-            'author': form.author.data,
-            'year': form.year.data,
-            'count': form.count.data
-        }
-        data['genre_id'] = genre.id
 
-        if put(f'{URL}:{port}/api/books/{book_id}', json=data):
-            return redirect('/books')
-        else:
-            return render_template("add_book.html", title='Добавить читателя', form=form,
-                                   message='Error')
+        book = session.query(Books).get(book_id)
+        book.title = form.title.data
+        book.author = form.author.data
+        book.genre_id = genre.id
+        book.year = form.year.data
+        book.count = form.count.data
+        session.commit()
+        return redirect('/books')
+
     return render_template("add_book.html", title='Изменить книгу', form=form)
 
 
@@ -170,18 +181,16 @@ def add_book():
             genre = session.query(Genres).filter(Genres.name == form.genre.data).first()
         session.commit()
 
-        data = {
-            'title': form.title.data,
-            'author': form.author.data,
-            'year': form.year.data,
-            'count': form.count.data
-        }
-        data['genre_id'] = genre.id
+        book = Books()
+        book.title = form.title.data
+        book.author = form.author.data
+        book.genre_id = genre.id
+        book.year = form.year.data
+        book.count = form.count.data
+        session.add(book)
+        session.commit()
 
-        if post(f'{URL}:{port}/api/books', json=data):
-            return redirect('/books')
-        else:
-            return render_template("add_book.html", title='Добавить читателя', form=form, message='Error')
+        return redirect('/books')
 
     return render_template("add_book.html", title='Добавить книгу', form=form)
 
@@ -190,31 +199,49 @@ def add_book():
 @login_required
 def delete_user(user_id):
     if request.method == 'GET':
-        res = delete(f'{URL}:{port}/api/users/{user_id}')
+        session = db_session.create_session()
+        user = session.query(Users).get(user_id)
+        session.delete(user)
+        session.commit()
+
         return redirect('/users')
 
 
 @app.route("/edit_user/<int:user_id>", methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
+    session = db_session.create_session()
     form = AddUserForm()
     if request.method == 'GET':
-        user = get(f'{URL}:{port}/api/users/{user_id}').json()['user']
-        form.name.data = user['name']
-        form.email.data = user['email']
-        form.hashed_password.data = ''
-        return render_template("add_user.html", title='Добавить читателя', form=form)
-    if form.validate_on_submit():
-        data = {
-            'name': form.name.data,
-            'email': form.email.data,
-            'hashed_password': form.hashed_password.data
-        }
-        if put(f'{URL}:{port}/api/users/{user_id}', json=data):
-            return redirect('/users')
+        # user = get(f'{URL}:{port}/api/users/{user_id}').json()['user']
+
+        user = session.query(Users).get(user_id)
+        if user:
+            form.name.data = user.name
+            form.email.data = user.email
+            form.hashed_password.data = ''
+            return render_template("add_user.html", title='Добавить читателя', form=form)
         else:
             return render_template("add_user.html", title='Добавить читателя', form=form,
                                    message='Error')
+
+    if form.validate_on_submit():
+
+        user = session.query(Users).get(user_id)
+
+        user.name = form.name.data
+        user.email = form.email.data
+        user.set_password(form.hashed_password.data)
+
+        session.commit()
+
+        return redirect('/users')
+
+        # if put(f'{URL}:{port}/api/users/{user_id}', json=data):
+        #     return redirect('/users')
+        # else:
+        #     return render_template("add_user.html", title='Добавить читателя', form=form,
+        #                            message='Error')
     return render_template("add_user.html", title='Добавить читателя', form=form)
 
 
@@ -235,17 +262,16 @@ def login():
 
 @app.route("/add_user", methods=['GET', 'POST'])
 def add_user():
+    session = db_session.create_session()
     form = AddUserForm()
     if form.validate_on_submit():
-        data = {
-            'name': form.name.data,
-            'email': form.email.data,
-            'hashed_password': form.hashed_password.data
-        }
-        if post(f'{URL}:{port}/api/users', json=data):
-            return redirect('/login')
-        else:
-            return render_template("add_user.html", title='Добавить читателя', form=form, message='Error')
+        user = Users(
+            name=form.name.data,
+            email=form.email.data)
+        user.set_password(form.hashed_password.data)
+        session.add(user)
+        session.commit()
+        return redirect('/login')
 
     return render_template("add_user.html", title='Добавить читателя', form=form)
 
@@ -253,8 +279,11 @@ def add_user():
 @app.route("/users")
 @login_required
 def users():
-    users = get(f'{URL}:{port}/api/users').json()
-    return render_template("users.html", title='Читатели', users=users['users'])
+    # users = get(f'{URL}:{port}/api/users').json()
+    session = db_session.create_session()
+    users = session.query(Users).all()
+
+    return render_template("users.html", title='Читатели', users=users)
 
 
 @app.route("/books", methods=['GET', 'POST'])
